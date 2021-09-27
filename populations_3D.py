@@ -1,11 +1,12 @@
 from fipy import *
 from numpy import *
+from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as animate
 from mpl_toolkits.axes_grid1 import  make_axes_locatable
 writegif = animate.PillowWriter(fps=30)
-from tqdm import tqdm
+
 matplotlib.use('TkAgg')
 nx = ny = nz= 20
 dx = dy = dz = 1.
