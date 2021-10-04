@@ -60,8 +60,10 @@ plt.savefig('Arrhenius plot')
 mesh = Grid3D(dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz)
 meshSlice = Grid2D(dx=dx, dy=dy, nx=nx, ny=ny)
 # Create cell variables
-u = CellVariable(name="Single population, u", mesh=mesh, hasOld=True)
-v = CellVariable(name="Single population, v", mesh=mesh, hasOld=True)
+u = CellVariable(name="E.coli", mesh=mesh, hasOld=True)
+v = CellVariable(name="C.botulinum$", mesh=mesh, hasOld=True)
+w = CellVariable(name="B.cereus", mesh=mesh, hasOld=True)
+p = CellVariable(name="E.faecium", mesh=mesh, hasOld=True)
 temperature = CellVariable(name="temperature", mesh=mesh, hasOld=True)
 varSlice = CellVariable(name="Slice", mesh=meshSlice)
 # Coefficients spatially varying
