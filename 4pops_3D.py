@@ -146,13 +146,13 @@ for t in tqdm(range(steps)):
     t_core = interp(t_current, days_tempr, tempr_core)
     temperature.setValue(t_core, where=((X - L / 2) ** 2 + (Y - L / 2) ** 2 + (Z - L / 2) ** 2 < rad ** 2))
     for i in range(len(Zslices)):
-        varSlice.setValue(u((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(DeathCoefU((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsU[i].append(varSlice.numericValue.copy())
-        varSlice.setValue(v((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(DeathCoefV((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsV[i].append(varSlice.numericValue.copy())
-        varSlice.setValue(w((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(DeathCoefW((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsW[i].append(varSlice.numericValue.copy())
-        varSlice.setValue(p((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(DeathCoefP((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsP[i].append(varSlice.numericValue.copy())
         varSlice.setValue(temperature((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsT[i].append(varSlice.numericValue.copy())
@@ -161,7 +161,7 @@ for t in tqdm(range(steps)):
 nSlices  = 3
 nResults = 5
 cax_mins = [minVal, minVal, minVal, minVal, minT]
-cax_maxs = [maxVal-1, maxVal-1, maxVal-1, maxVal-1, maxT]
+cax_maxs = [3-1, 3-1, 3-1, 3-1, maxT]
 fig, axs = plt.subplots(nSlices, nResults, figsize=(27, 18))
 names = ['$E.coli$', '$C.botulinum$', '$B.cereus$', '$E.faecium$', 'T, $^{\circ}C$']
 # fig.set_tight_layout(True)  # - this is not compatible with colorbar!
@@ -210,6 +210,6 @@ def update(k):
     return axs
 
 animate_uv = animate.FuncAnimation(fig, update, interval=1, frames=steps, repeat=False)
-animate_uv.save("real_growths_3D.gif", writer=writegif)
+animate_uv.save("real_death_rates_3D.gif", writer=writegif)
 writervideo = animate.FFMpegWriter(fps=12)
-animate_uv.save("real_growths_3D.mp4", writer=writervideo)
+animate_uv.save("real_death_rates_3D.mp4", writer=writervideo)
