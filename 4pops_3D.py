@@ -4,37 +4,55 @@ from tqdm import tqdm
 import matplotlib.animation as animate
 from mpl_toolkits.axes_grid1 import  make_axes_locatable
 writegif = animate.PillowWriter(fps=6)
+
+# Heap geometry and grid
 nx = ny = nz = 20
 dx = dy = dz = 1.
 L = dx*nx
-# Diffusion coeff
-D_u, D_v, D_w, D_p, D_T = .15, .25, .31, .2, 4
-Growth_u, Growth_v, Growth_w, Growth_p, Growth_T = 1.0, 1.0, 1.0, 1.0, 1.0 # hour^-1
-Comp_uv, Comp_uw, Comp_up = .2, .4, .4
-Comp_vu, Comp_vw, Comp_vp = .3, .3, .3
-Comp_wu, Comp_wv, Comp_wp = .2, .2, .3
-Comp_pu, Comp_pv, Comp_pw = .3, .2, .3
+# Dynamical model coefficients
+D_u, D_v, D_w, D_p, D_T = .65, .75, .31, .42, 4
+Growth_u, Growth_v, Growth_w, Growth_p, Growth_T = 1.314, 1.606, 1.911, 0.921, .3 # hour^-1 , first three from combase, FE from Bologna sausage
+Comp_uv, Comp_uw, Comp_up = 1.2, 1.1, 1.4
+Comp_vu, Comp_vw, Comp_vp = 1.6, 1.1, 1.6
+Comp_wu, Comp_wv, Comp_wp = 2.1, 2.2, 2.1
+Comp_pu, Comp_pv, Comp_pw = 1.6, 1.4, 1.2
 Death_u, Death_v, Death_w, Death_p = .1, .05, .03, .01
 
+# Integration settings
+zstep   = 10
+Zslices = arange(0, nz+zstep, zstep).tolist()
+steps   = 336
+dt      = dx**3/(6*max([D_u, D_v, D_w, D_p, D_T]))
+
 # Measured parameters of composting windrow
-tempr_core = array([21., 30., 58., 61., 63., 65., 64., 63., 61., 60.,\
+tempr_core      = array([21., 30., 58., 61., 63., 65., 64., 63., 61., 60.,\
                     61., 62., 61., 60., 59., 57.,  51., 42., 35., 32.,\
                     30., 29., 27., 25., 25., 25.])
-days_tempr = array([1, 3, 5, 7, 9, 10, 12, 13, 14, 15,\
+days_tempr      = array([1, 3, 5, 7, 9, 10, 12, 13, 14, 15,\
                     16, 18, 20, 22, 27, 29, 33, 39, 46, 49,\
                     54, 61, 63, 70, 84, 110])
-ph_compsoting = array([7.8, 8.1, 8.05, 8.0, 7.9, 7.5,\
+ph_compsoting   = array([7.8, 8.1, 8.05, 8.0, 7.9, 7.5,\
                        7.5, 7.5, 7.4, 7.4, 7.3, 7.2, 7.2, 7.1, 7.1])
-days_ph = array([1, 3, 6, 8, 14, 21, 28, 35, 42, 49, 56, 63, 70, 84, 110])
-moist_core = array([60., 57., 45., 44., 60., 54., 51., 41., 37., 36., 28., 26.])/100
-days_moist = array([1, 8, 14, 21, 35, 42, 49, 56, 63, 70, 84, 110])
+days_ph     = array([1, 3, 6, 8, 14, 21, 28, 35, 42, 49, 56, 63, 70, 84, 110])
+moist_core  = array([60., 57., 45., 44., 60., 54., 51., 41., 37., 36., 28., 26.])/100
+days_moist  = array([1, 8, 14, 21, 35, 42, 49, 56, 63, 70, 84, 110])
+
+# Animation settings
+nSlices  = 3 # number of slices along z-axis
+nResults = 5 # number of population plots + temperature plots
+minVal   = 0. # min population level for colorbars
+maxVal   = 30 # max population level for colorbars
+minT     = 21. # min temperature (ambient)
+maxT     = 65. # max temperature (in the core)
+cax_mins = [minVal, minVal, minVal, minVal, minT] #colorbar mins
+cax_maxs = [maxVal-1, maxVal-1, maxVal-1, maxVal-1, maxT] #colorbar maxes
 
 # Initialise meshes
 mesh = Grid3D(dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz)
 meshSlice = Grid2D(dx=dx, dy=dy, nx=nx, ny=ny)
 # Create cell variables
 u = CellVariable(name="$E.coli$", mesh=mesh, hasOld=True)
-v = CellVariable(name="$C.botulinum$", mesh=mesh, hasOld=True)
+v = CellVariable(name="$C.perfringens", mesh=mesh, hasOld=True)
 w = CellVariable(name="$B.cereus$", mesh=mesh, hasOld=True)
 p = CellVariable(name="$E.faecium$", mesh=mesh, hasOld=True)
 temperature = CellVariable(name="Temperature", mesh=mesh, hasOld=True)
@@ -57,15 +75,12 @@ GrowthCoefT = CellVariable(name="Spacially variable heating rate, T", mesh=mesh,
 # Fixed-gradient boundary condition around the boundary (how to extend this to fixed flux? they are not the same)
 X, Y, Z = mesh.cellCenters()
 Xslice, Yslice = meshSlice.cellCenters()
-# Initialise temperature with a hot disk
+# Hot spherical core in the heap
 rad = 5
-minT = 21.
-maxT = 65.
 temperature.setValue(minT)
 temperature.setValue(tempr_core[0], where=((X - L/2)**2 + (Y - L/2)**2 + (Z - L/2)**2 < rad**2))
-#  Initialise populations with noise
+# Initialise populations with noise
 maxVal = 10.
-minVal = 0.
 u_init = maxVal*random.rand(nx*ny*nz)
 v_init = maxVal*random.rand(nx*ny*nz)
 w_init = maxVal*random.rand(nx*ny*nz)
@@ -91,12 +106,13 @@ GrowthCoefV.constrain(0, where=mesh.exteriorFaces)
 GrowthCoefW.constrain(0, where=mesh.exteriorFaces)
 GrowthCoefP.constrain(0, where=mesh.exteriorFaces)
 #  Define sink and source terms as variables
-maxCapacity = 12.
+maxCapacity = 100.
 grow_u    = ((maxCapacity - u - Comp_uv * v - Comp_uw * w - Comp_up * p)/maxCapacity) * u
 grow_v    = ((maxCapacity - v - Comp_vu * u - Comp_vw * w - Comp_vp * p)/maxCapacity) * v
 grow_w    = ((maxCapacity - w - Comp_wu * u - Comp_wv * v - Comp_wp * p)/maxCapacity) * w
 grow_p    = ((maxCapacity - p - Comp_pu * u - Comp_pv * v - Comp_pw * w)/maxCapacity) * p
-grow_T    = grow_u + grow_v + grow_w + grow_p
+grow_T    = (GrowthCoefU/(1+DeathCoefU)) * grow_u + (GrowthCoefV/(1+DeathCoefV))* grow_v +\
+            (GrowthCoefW/(1+DeathCoefW)) * grow_w + (GrowthCoefP/(1+DeathCoefP)) * grow_p
 die_u     = DeathCoefU * u
 die_v     = DeathCoefV * v
 die_w     = DeathCoefU * w
@@ -106,12 +122,8 @@ eq_u = TransientTerm(var=u) == DiffusionTerm(DiffCoefU, var=u) + GrowthCoefU * g
 eq_v = TransientTerm(var=v) == DiffusionTerm(DiffCoefV, var=v) + GrowthCoefV * grow_v - die_v
 eq_w = TransientTerm(var=w) == DiffusionTerm(DiffCoefW, var=w) + GrowthCoefW * grow_w - die_w
 eq_p = TransientTerm(var=p) == DiffusionTerm(DiffCoefP, var=p) + GrowthCoefP * grow_p - die_p
-eq_T = TransientTerm(var=temperature) == DiffusionTerm(DiffCoefT, var=temperature) + GrowthCoefT * grow_T
+eq_T = TransientTerm(var=temperature) == DiffusionTerm(DiffCoefT, var=temperature) +  grow_T
 eqns = eq_u & eq_v & eq_w & eq_p & eq_T
-zstep = 10
-Zslices = arange(0, nz+zstep, zstep).tolist()
-steps = 126
-dt = dx**3/(6*max([D_u, D_v, D_w, D_p, D_T]))
 resultsU = [[], [], []]
 resultsV = [[], [], []]
 resultsW = [[], [], []]
@@ -123,47 +135,47 @@ for t in tqdm(range(steps)):
     ph_level = interp(t_current, days_ph, ph_compsoting)*ones_like(temperature.value)
     t_core   = interp(t_current, days_tempr, tempr_core)
     a_w      = water_activity(interp(t_current, days_moist, moist_core), temperature.value, t)
-    GrowthCoefU.setValue(Growth_u * cardinal_model(temperature.value, 40.3, 5.6,  47.3) * cardinal_model(ph_level, 7, 4, 10) * mcmeekin_model(a_w, .95))  # e coli
-    GrowthCoefV.setValue(Growth_v * cardinal_model(temperature.value, 39.3, 11.0, 45.8) * cardinal_model(ph_level, 7, 4.6, 9) * mcmeekin_model(a_w, .935)) # clostridium type A
-    GrowthCoefW.setValue(Growth_w * cardinal_model(temperature.value, 40.1, 4.1, 50.0) * cardinal_model(ph_level, 7, 4.9, 9.3) * mcmeekin_model(a_w, .92)) # b. cereus
-    GrowthCoefP.setValue(Growth_p * cardinal_model(temperature.value, 42.0, 0.1, 53.5) * cardinal_model(ph_level, 7, 5, 9.6) * mcmeekin_model(a_w, .97)) # e. faecium
+    GrowthCoefU.setValue(Growth_u * cardinal_model(temperature.value, 40.3, 5.6,  47.3) * cardinal_model(ph_level, 7.0, 4.0, 10.0) * mcmeekin_model(a_w, .95))  # e coli
+    # GrowthCoefV.setValue(Growth_v * cardinal_model(temperature.value, 35.3, 10.0, 48.8) * cardinal_model(ph_level, 7.0, 4.6, 8.0) * mcmeekin_model(a_w, .935)) # clostridium botilinum type A
+    GrowthCoefV.setValue(Growth_v * cardinal_model(temperature.value, 45.0, 10.0, 48.8) * cardinal_model(ph_level, 7.0, 5.5, 9.0) * mcmeekin_model(a_w, .93)) # clostridium perfringens
+    GrowthCoefW.setValue(Growth_w * cardinal_model(temperature.value, 31.9, 10.0, 50.0) * cardinal_model(ph_level, 7.0, 4.35, 9.3) * mcmeekin_model(a_w, .912)) # b. cereus
+    GrowthCoefP.setValue(Growth_p * cardinal_model(temperature.value, 42.0, 0.1, 53.5) * cardinal_model(ph_level, 7.0, 5.0, 9.6) * mcmeekin_model(a_w, .97)) # e. faecium
     # Arrhenius model of thermal inactivation rate
     # Thermal inactivation of e coli as modelled in Cerf et.al. 1996, rate is in seconds:
-    Death_ecol = 3600*cerf_model(temperature.value, ph_level, a_w, [86.49, -.3028 * (10 ** 5), -.5470, .0494, 3.067])
+    Death_ecol     = 3600*cerf_model(temperature.value, ph_level, a_w, [86.49, -.3028 * (10 ** 5), -.5470, .0494, 3.067])
     Death_bacillis = 60*mafart_model_aw(temperature.value, ph_level, a_w, 0.676, 100, [9.28, 4.08, 0.164])
-    Death_clostr   = mafart_model_aw(temperature.value, ph_level, a_w, 0.000000045, 100, [7.97, 6.19, 0.125])
-    Death_fe       = mafart_model_aw(temperature.value, ph_level, a_w, 0.796, 100, [12.86, 4.19, 0.185])
+    # these two arbitrary for now
+    # Death_clostr   = mafart_model_aw(temperature.value, ph_level, a_w, 0.000000045, 100, [7.97, 6.19, 0.125]) # clost bot type A
+    Death_clostr = mafart_model_aw(temperature.value, ph_level, a_w, 0.95, 100, [10.05, 6.19, 0.125]) # clostr perfringens
+    Death_fe     = mafart_model_aw(temperature.value, ph_level, a_w, 0.796, 100, [12.86, 4.19, 0.185])
     DeathCoefU.setValue(Death_ecol)
     DeathCoefV.setValue(Death_clostr)
     DeathCoefW.setValue(Death_bacillis)
     DeathCoefP.setValue(Death_fe)
+    # t_core = interp(t_current, days_tempr, tempr_core)
+    # temperature.setValue(t_core, where=((X - L / 2) ** 2 + (Y - L / 2) ** 2 + (Z - L / 2) ** 2 < rad ** 2))
     u.updateOld()
     v.updateOld()
     w.updateOld()
     p.updateOld()
     temperature.updateOld()
     eqns.solve(dt=dt)
-    t_core = interp(t_current, days_tempr, tempr_core)
-    temperature.setValue(t_core, where=((X - L / 2) ** 2 + (Y - L / 2) ** 2 + (Z - L / 2) ** 2 < rad ** 2))
     for i in range(len(Zslices)):
-        varSlice.setValue(DeathCoefU((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(u((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsU[i].append(varSlice.numericValue.copy())
-        varSlice.setValue(DeathCoefV((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(v((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsV[i].append(varSlice.numericValue.copy())
-        varSlice.setValue(DeathCoefW((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(w((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsW[i].append(varSlice.numericValue.copy())
-        varSlice.setValue(DeathCoefP((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
+        varSlice.setValue(p((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsP[i].append(varSlice.numericValue.copy())
         varSlice.setValue(temperature((Xslice, Yslice, Zslices[i] * ones(varSlice.mesh.numberOfCells)), order=0))
         resultsT[i].append(varSlice.numericValue.copy())
 
 # Animate
-nSlices  = 3
-nResults = 5
-cax_mins = [minVal, minVal, minVal, minVal, minT]
-cax_maxs = [3-1, 3-1, 3-1, 3-1, maxT]
+
 fig, axs = plt.subplots(nSlices, nResults, figsize=(27, 18))
-names = ['$E.coli$', '$C.botulinum$', '$B.cereus$', '$E.faecium$', 'T, $^{\circ}C$']
+names = ['$E.coli$', '$C.perfringens$', '$B.cereus$', '$E.faecium$', 'T, $^{\circ}C$']
 # fig.set_tight_layout(True)  # - this is not compatible with colorbar!
 # Update for animation
 def update(k):
@@ -210,6 +222,6 @@ def update(k):
     return axs
 
 animate_uv = animate.FuncAnimation(fig, update, interval=1, frames=steps, repeat=False)
-animate_uv.save("real_death_rates_3D.gif", writer=writegif)
+animate_uv.save("with_new_clostr_3D.gif", writer=writegif)
 writervideo = animate.FFMpegWriter(fps=12)
-animate_uv.save("real_death_rates_3D.mp4", writer=writervideo)
+animate_uv.save("with_new_clostr_3D.mp4", writer=writervideo)
