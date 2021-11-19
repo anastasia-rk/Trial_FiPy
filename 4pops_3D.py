@@ -11,11 +11,11 @@ dx = dy = dz = 1.
 L = dx*nx
 # Dynamical model coefficients
 D_u, D_v, D_w, D_p, D_T = .65, .75, .31, .42, 4
-Growth_u, Growth_v, Growth_w, Growth_p, Growth_T = 1.314, 1.606, 1.911, 0.921, .3 # hour^-1 , first three from combase, FE from Bologna sausage
+Growth_u, Growth_v, Growth_w, Growth_p, Growth_T = 1.314, 1.606, 1.911, 0.998, .3 # hour^-1 , first three from combase, FE from Bologna sausage
 Comp_uv, Comp_uw, Comp_up = 1.2, 1.1, 1.4
-Comp_vu, Comp_vw, Comp_vp = 1.6, 1.1, 1.6
+Comp_vu, Comp_vw, Comp_vp = 2.6, 1.1, 1.6
 Comp_wu, Comp_wv, Comp_wp = 2.1, 2.2, 2.1
-Comp_pu, Comp_pv, Comp_pw = 1.6, 1.4, 1.2
+Comp_pu, Comp_pv, Comp_pw = 1.6, 2.4, 1.2
 Death_u, Death_v, Death_w, Death_p = .1, .05, .03, .01
 
 # Integration settings
@@ -100,6 +100,7 @@ DiffCoefP.constrain(0, where=mesh.exteriorFaces)
 DeathCoefU.constrain(0, where=mesh.exteriorFaces)
 DeathCoefV.constrain(0, where=mesh.exteriorFaces)
 DeathCoefW.constrain(0, where=mesh.exteriorFaces)
+
 DeathCoefP.constrain(0, where=mesh.exteriorFaces)
 GrowthCoefU.constrain(0, where=mesh.exteriorFaces)
 GrowthCoefV.constrain(0, where=mesh.exteriorFaces)
@@ -122,7 +123,7 @@ eq_u = TransientTerm(var=u) == DiffusionTerm(DiffCoefU, var=u) + GrowthCoefU * g
 eq_v = TransientTerm(var=v) == DiffusionTerm(DiffCoefV, var=v) + GrowthCoefV * grow_v - die_v
 eq_w = TransientTerm(var=w) == DiffusionTerm(DiffCoefW, var=w) + GrowthCoefW * grow_w - die_w
 eq_p = TransientTerm(var=p) == DiffusionTerm(DiffCoefP, var=p) + GrowthCoefP * grow_p - die_p
-eq_T = TransientTerm(var=temperature) == DiffusionTerm(DiffCoefT, var=temperature) +  grow_T
+eq_T = TransientTerm(var=temperature) == DiffusionTerm(DiffCoefT, var=temperature) + grow_T
 eqns = eq_u & eq_v & eq_w & eq_p & eq_T
 resultsU = [[], [], []]
 resultsV = [[], [], []]
@@ -146,8 +147,8 @@ for t in tqdm(range(steps)):
     Death_bacillis = 60*mafart_model_aw(temperature.value, ph_level, a_w, 0.676, 100, [9.28, 4.08, 0.164])
     # these two arbitrary for now
     # Death_clostr   = mafart_model_aw(temperature.value, ph_level, a_w, 0.000000045, 100, [7.97, 6.19, 0.125]) # clost bot type A
-    Death_clostr = mafart_model_aw(temperature.value, ph_level, a_w, 0.95, 100, [10.05, 6.19, 0.125]) # clostr perfringens
-    Death_fe     = mafart_model_aw(temperature.value, ph_level, a_w, 0.796, 100, [12.86, 4.19, 0.185])
+    Death_clostr = 60*mafart_model_aw(temperature.value, ph_level, a_w, 0.95, 100, [10.05, 6.19, 0.125]) # clostr perfringens
+    Death_fe     = 60*mafart_model_aw(temperature.value, ph_level, a_w, 0.796, 100, [12.86, 4.19, 0.185])
     DeathCoefU.setValue(Death_ecol)
     DeathCoefV.setValue(Death_clostr)
     DeathCoefW.setValue(Death_bacillis)

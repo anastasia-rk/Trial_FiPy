@@ -93,6 +93,11 @@ def cerf_model(T,pH,aw,coeffs):
     T = T + 273.15
     return exp(coeffs[0] + coeffs[1]/T + coeffs[2]*pH + coeffs[3]*pH**2 + coeffs[4]*aw**2)
 
+def zweitering_model(T,T_min,T_max,b,c):
+    # model for maximum growth rate as function of temperature
+    # temperature is in Celcius!
+    return b * (1 - exp(c * (T-T_max))) * (T - T_min)**2
+
 
 def water_activity(moisture_content, T, time):
     # moisture_content - moisture content in parts
@@ -184,11 +189,12 @@ if __name__ == '__main__':
     plt.savefig('Figures/inhibiting_factors_growth.png')
     tkz.save('Tikzes/inhibiting_factors_growth.tikz')
 
+
     # Arrhenius curves for different activation energy values:
     Death_u, Death_v = .1, .2
     tempr_plot = arange(10., 130., 2.)
     energy_plot = arange(1., 5., 1.)
-    fig, axs = plt.subplots(1, 2)
+    fig3, axs = plt.subplots(1, 2)
     for e_power in energy_plot:
         energy = 10. ** e_power
         rates_u = arrhenius(Death_u, tempr_plot, energy)
@@ -206,9 +212,9 @@ if __name__ == '__main__':
     tkz.save('Tikzes/Arrhenius_death_rates.tikz')
 
 #     inactivation curves form papers for specific bacteria
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    fig.set_size_inches(10.0, 6.0)
+    fig4 = plt.figure()
+    ax = fig4.add_subplot(111)
+    fig4.set_size_inches(10.0, 6.0)
     Death_ecol = cerf_model(tempr_plot, 7, 0.96, [86.49, -.3028 * (10 ** 5), -.5470, .0494, 3.067])
     Death_bacillis = mafart_model_aw(tempr_plot,7,0.96,0.676,100,[9.28, 4.08, 0.164])
     Death_clostr = mafart_model_aw(tempr_plot,7,0.96,0.000000045,100,[7.97, 6.19, 0.125])
@@ -217,9 +223,9 @@ if __name__ == '__main__':
     temprs_kelvin = 1/(tempr_plot + 273.15)
     ax.plot(temprs_kelvin, Death_ecol*3600, label='$E.coli$')
     ax.plot(temprs_kelvin, Death_bacillis*60, label='$B.cereus$')
-    ax.plot(temprs_kelvin, Death_clostr, label='$C.botulinum$')
-    ax.plot(temprs_kelvin, Death_clostr_p, label='$C.perfringens$')
-    ax.plot(temprs_kelvin, Death_fe, label='$E.faecium$')
+    ax.plot(temprs_kelvin, Death_clostr*60, label='$C.botulinum$')
+    ax.plot(temprs_kelvin, Death_clostr_p*60, label='$C.perfringens$')
+    ax.plot(temprs_kelvin, Death_fe*60, label='$E.faecium$')
     ax_top = ax.twiny()
     ax.set_xlim([temprs_kelvin[-1], temprs_kelvin[0]])
     ax_top.set_xlim([tempr_plot[-1], tempr_plot[0]])  # same limits
@@ -253,8 +259,8 @@ if __name__ == '__main__':
                               .678, .658, .632, .602, .567])
     # growths_ec[5, :] = array([])
     temprs_kelvin = 1/(temprs + 273.15)
-    fig = plt.figure()
-    ax = fig.add_subplot( 111 )
+    fig5 = plt.figure()
+    ax = fig5.add_subplot( 111 )
     ax.plot(temprs_kelvin,(growths_ec[4, :]),label='ComBase')
     ax.plot(temprs_kelvin,sch_rates_ecol,label='Schoolfield')
     ax_top = ax.twiny()
@@ -284,8 +290,8 @@ if __name__ == '__main__':
     days_ph = array([1, 3, 6, 8, 14, 21, 28, 35, 42, 49, 56, 63, 70, 84, 110])
     moist_core = array([60., 57., 45., 44., 60., 54., 51., 41., 37., 36., 28., 26., ])
     days_moist = array([1, 8, 14, 21, 35, 42, 49, 56, 63, 70, 84, 110])
-    fig3, axs3 = plt.subplots(3, 1)
-    fig3.set_size_inches(10.0, 6.0)
+    fig6, axs3 = plt.subplots(3, 1)
+    fig6.set_size_inches(10.0, 6.0)
     axs3[0].plot(days_tempr,tempr_core)
     axs3[0].set_xlabel('time, days')
     axs3[0].set_ylabel('T, $^{\circ}C$')
@@ -302,9 +308,14 @@ if __name__ == '__main__':
     plt.savefig('Figures/Composting_environement')
     tkz.save('Tikzes/Composting_environment.tikz')
 
-
-
-
-
+    fig7 = plt.figure()
+    ax = fig7.add_subplot(111)
+    fig7.set_size_inches(10.0, 6.0)
+    ax.plot(temperatures,zweitering_model(temperatures,.1,53.3,0.0256,0.1436),label="$E.faceum")
+    ax.set_xlabel('T, $^{\circ}C$')
+    ax.set_xlabel('$\mu_{max}$')
+    plt.tight_layout()
+    plt.savefig('Figures/fe_max_growth_rate')
+    tkz.save('Tikzes/fe_max_growth_rate.tikz')
 
 
