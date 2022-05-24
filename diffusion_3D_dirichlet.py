@@ -36,7 +36,7 @@ phiAll.setValue(maxVal, where= ( (X - L/2)**2 + (Y - L/2)**2 + (Z-L/2)**2 < rad*
 
 # Loop in time
 timeStepDuration = dx**3/(6*D)
-steps = 120
+steps = 50
 zstep = 10
 Zslices = arange(0, nz+zstep, zstep).tolist()
 # Set a dummy variable to save simulation results and plot them later (this is for animation):
